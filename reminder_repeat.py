@@ -1,9 +1,9 @@
-# File: reminder_repeat.py
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
+# Сдвигает прошлые слоты на следующий период повтора
+
 def adjust_initial_slots(slots: list[datetime], rpt_type: str, interval: int, now: datetime) -> list[datetime]:
-    """Сдвигает прошлые слоты на следующий период повторения."""
     adjusted = []
     for dt in slots:
         if dt <= now:

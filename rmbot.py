@@ -1,4 +1,3 @@
-# File: rmbot.py
 import os
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -13,12 +12,30 @@ TOKEN = os.getenv('BOT_TOKEN')
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "👋 Привет! Я ваш Telegram-напоминатор. Напишите мне, например:"
-        "\n🔹 напомни завтра в 18:00 позвонить"
-        "\n🔹 через 5 минут сделать растяжку"
-        "\n🔹 каждый день в 9:00 медитировать",
+        "👋 Привет! Я ваш Telegram-напоминатор. Напишите мне, например:\n"
+        "🔹 напомни завтра в 18:00 позвонить\n"
+        "🔹 через 5 минут сделать растяжку\n"
+        "🔹 каждый день в 9:00 медитировать",
         parse_mode="Markdown"
     )
+
+async def list_reminders(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    db: ReminderDB = context.bot_data['db']
+    cursor = db.conn.cursor()
+    cursor.execute(
+        "SELECT remind_at, reminder_text FROM reminders "
+        "WHERE status='active' AND chat_id=? ORDER BY remind_at",
+        (update.effective_chat.id,)
+    )
+    rows = cursor.fetchall()
+    if not rows:
+        return await update.message.reply_text("❌ Задач нет")
+    lines = []
+    for remind_at, text in rows:
+        date_part, time_part = remind_at.split(' ')
+        lines.append(f"{date_part} в {time_part[:5]} — {text}")
+    message = "📋 Список активных напоминаний:\n" + "\n".join(lines)
+    await update.message.reply_text(message)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     raw = update.message.text.strip()
@@ -64,6 +81,7 @@ if __name__ == '__main__':
     app.bot_data['db'] = db
     app.job_queue.run_repeating(check_and_send, interval=60, first=10)
     app.add_handler(CommandHandler('start', start))
+    app.add_handler(CommandHandler('list', list_reminders))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     print('✅ Бот запущен и готов к работе...')
     app.run_polling()

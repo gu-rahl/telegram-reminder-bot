@@ -1,9 +1,7 @@
-# File: db.py
 import sqlite3
 from datetime import datetime
 
 DB_PATH = 'reminders.db'
-
 CREATE_TABLE = '''
 CREATE TABLE IF NOT EXISTS reminders (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -19,7 +17,6 @@ CREATE TABLE IF NOT EXISTS reminders (
 
 class ReminderDB:
     def __init__(self, path=DB_PATH):
-        # Открываем соединение с БД
         self.conn = sqlite3.connect(path, check_same_thread=False)
         self._init_schema()
 
@@ -35,14 +32,7 @@ class ReminderDB:
             c.execute(
                 "INSERT INTO reminders (chat_id, reminder_text, remind_at, created_at, repeat, repeat_interval)"
                 " VALUES (?, ?, ?, ?, ?, ?)",
-                (
-                    chat_id,
-                    text,
-                    dt.strftime('%Y-%m-%d %H:%M:%S'),
-                    now,
-                    rpt,
-                    interval
-                )
+                (chat_id, text, dt.strftime('%Y-%m-%d %H:%M:%S'), now, rpt, interval)
             )
         self.conn.commit()
 
@@ -53,6 +43,17 @@ class ReminderDB:
             "SELECT id, chat_id, reminder_text, remind_at, repeat, repeat_interval "
             "FROM reminders WHERE status='active' AND remind_at<=?",
             (now,)
+        )
+        return c.fetchall()
+
+    def get_pending(self, chat_id):
+        """Возвращает список незавершённых напоминаний для чата (remind_at, reminder_text)."""
+        c = self.conn.cursor()
+        c.execute(
+            "SELECT remind_at, reminder_text FROM reminders "
+            "WHERE status='active' AND chat_id=? "
+            "ORDER BY remind_at",
+            (chat_id,)
         )
         return c.fetchall()
 
@@ -67,7 +68,6 @@ class ReminderDB:
     def mark_done(self, rid):
         c = self.conn.cursor()
         c.execute(
-            "UPDATE reminders SET status='done' WHERE id=?",
-            (rid,)
+            "UPDATE reminders SET status='done' WHERE id=?", (rid,)
         )
         self.conn.commit()
